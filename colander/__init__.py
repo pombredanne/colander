@@ -1743,6 +1743,9 @@ class _SchemaNode(object):
       :attr:`colander.drop`, the node is dropped from the schema if it isn't
       set during serialization/deserialization.
 
+    - ``missing_msg``: Optional error message to be used if the value is
+      required and missing.
+
     - ``preparer``: Optional preparer for this node.  It should be
       an object that implements the
       :class:`colander.interfaces.Preparer` interface.
@@ -1787,6 +1790,7 @@ class _SchemaNode(object):
     validator = None
     default = null
     missing = required
+    missing_msg = _('Required')
     name = ''
     raw_title = _marker
     title = ''
@@ -1928,9 +1932,9 @@ class _SchemaNode(object):
         if appstruct is null:
             appstruct = self.missing
             if appstruct is required:
-                raise Invalid(self, _('Required'))
+                raise Invalid(self, self.missing_msg)
             if isinstance(appstruct, deferred): # unbound schema with deferreds
-                raise Invalid(self, _('Required'))
+                raise Invalid(self, self.missing_msg)
             # We never deserialize or validate the missing value
             return appstruct
 
@@ -2125,7 +2129,10 @@ class deferred(object):
     """ A decorator which can be used to define deferred schema values
     (missing values, widgets, validators, etc.)"""
     def __init__(self, wrapped):
-        functools.update_wrapper(self, wrapped)
+        try:
+            functools.update_wrapper(self, wrapped)
+        except AttributeError: #non-function
+            self.__doc__ = getattr(wrapped, '__doc__', None)
         self.wrapped = wrapped
 
     def __call__(self, node, kw):
